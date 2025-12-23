@@ -5,13 +5,56 @@ interface MovieNoteSettings {
     apiKey: string;
     outputFolder: string;
     language: string;
+    noteTemplate: string;
 }
 
 // デフォルト設定
+const DEFAULT_TEMPLATE = `---
+title: {{title}}
+original_title: {{original_title}}
+release_date: {{release_date}}
+director: {{director}}
+runtime: {{runtime}}
+genres: {{genres}}
+rating: {{vote_average}}
+tmdb_id: {{tmdb_id}}
+imdb_id: {{imdb_id}}
+---
+
+# {{title}}
+
+![ポスター]({{poster_url}})
+
+## 基本情報
+
+- **原題**: {{original_title}}
+- **公開日**: {{release_date}}
+- **監督**: {{director}}
+- **上映時間**: {{runtime_formatted}}
+- **ジャンル**: {{genres}}
+- **評価**: ⭐ {{vote_average}}/10 ({{vote_count}}票)
+
+## キャスト
+
+{{cast_list}}
+
+## あらすじ
+
+{{overview}}
+
+## メモ
+
+<!-- ここに感想やメモを書いてください -->
+
+---
+*このノートは [TMDb]({{tmdb_url}}) から自動生成されました。*
+`;
+
 const DEFAULT_SETTINGS: MovieNoteSettings = {
     apiKey: '',
     outputFolder: 'Movies',
-    language: 'ja-JP'
+    language: 'ja-JP',
+    noteTemplate: DEFAULT_TEMPLATE
 }
 
 // TMDb APIから取得する映画データの型定義
@@ -21,10 +64,26 @@ interface TMDbMovie {
     original_title: string;
     release_date: string;
     poster_path: string | null;
+    backdrop_path: string | null;
     overview: string;
+    tagline: string;
     vote_average: number;
+    vote_count: number;
+    popularity: number;
     runtime: number;
+    budget: number;
+    revenue: number;
+    status: string;
+    adult: boolean;
+    video: boolean;
+    original_language: string;
+    homepage: string;
+    imdb_id: string;
     genres: Array<{ id: number; name: string }>;
+    production_companies: Array<{ id: number; name: string }>;
+    production_countries: Array<{ iso_3166_1: string; name: string }>;
+    spoken_languages: Array<{ iso_639_1: string; name: string }>;
+    belongs_to_collection: { id: number; name: string } | null;
     credits: {
         cast: Array<{ name: string; character: string; order: number }>;
         crew: Array<{ name: string; job: string }>;
@@ -156,60 +215,138 @@ export default class MovieNotePlugin extends Plugin {
         }
     }
 
-    // ノートの内容を生成
+    // ノートの内容を生成（テンプレート変数を置換）
     generateNoteContent(movie: TMDbMovie): string {
-        const posterUrl = movie.poster_path
-            ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-            : '';
+        const template = this.settings.noteTemplate;
 
-        const director = movie.credits.crew.find(person => person.job === 'Director')?.name || '不明';
-        const cast = movie.credits.cast
-            .slice(0, 5)
-            .map(person => person.name)
-            .join(', ');
+        // テンプレート変数のマップを作成
+        const variables = this.createTemplateVariables(movie);
 
+        // テンプレート内の変数を置換
+        let content = template;
+        for (const [key, value] of Object.entries(variables)) {
+            const regex = new RegExp(`{{${key}}}`, 'g');
+            content = content.replace(regex, value);
+        }
+
+        return content;
+    }
+
+    // テンプレート変数を作成
+    createTemplateVariables(movie: TMDbMovie): Record<string, string> {
+        // 基本情報
+        const year = movie.release_date ? movie.release_date.split('-')[0] : '';
+        const runtime = movie.runtime || 0;
+        const hours = Math.floor(runtime / 60);
+        const minutes = runtime % 60;
+        const runtimeFormatted = runtime ? `${hours}時間${minutes}分` : '不明';
+
+        // スタッフ情報
+        const directors = movie.credits.crew.filter(p => p.job === 'Director').map(p => p.name);
+        const writers = movie.credits.crew.filter(p => p.job === 'Screenplay' || p.job === 'Writer').map(p => p.name);
+        const producers = movie.credits.crew.filter(p => p.job === 'Producer').map(p => p.name);
+
+        // キャスト情報
+        const castTop5 = movie.credits.cast.slice(0, 5).map(p => p.name).join(', ');
+        const castTop10 = movie.credits.cast.slice(0, 10).map(p => p.name).join(', ');
+        const castList = movie.credits.cast.slice(0, 10)
+            .map(p => `- ${p.name} (${p.character})`)
+            .join('\n');
+
+        // ジャンル
         const genres = movie.genres.map(g => g.name).join(', ');
-        const runtime = movie.runtime ? `${movie.runtime}分` : '不明';
+        const genresList = movie.genres.map(g => `- ${g.name}`).join('\n');
+        const genreIds = movie.genres.map(g => g.id).join(', ');
 
-        return `---
-title: ${movie.title}
-original_title: ${movie.original_title}
-release_date: ${movie.release_date}
-director: ${director}
-runtime: ${runtime}
-genres: ${genres}
-rating: ${movie.vote_average}
-tmdb_id: ${movie.id}
----
+        // 制作情報
+        const productionCompanies = movie.production_companies.map(c => c.name).join(', ');
+        const productionCountries = movie.production_countries.map(c => c.name).join(', ');
+        const spokenLanguages = movie.spoken_languages.map(l => l.name).join(', ');
 
-# ${movie.title}
+        // 金額フォーマット
+        const budgetFormatted = movie.budget ? `$${movie.budget.toLocaleString()}` : '不明';
+        const revenueFormatted = movie.revenue ? `$${movie.revenue.toLocaleString()}` : '不明';
 
-![ポスター](${posterUrl})
+        // 画像URL
+        const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '';
+        const posterUrlOriginal = movie.poster_path ? `https://image.tmdb.org/t/p/original${movie.poster_path}` : '';
+        const backdropUrl = movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '';
+        const backdropUrlOriginal = movie.backdrop_path ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}` : '';
 
-## 基本情報
+        // リンク
+        const tmdbUrl = `https://www.themoviedb.org/movie/${movie.id}`;
+        const imdbUrl = movie.imdb_id ? `https://www.imdb.com/title/${movie.imdb_id}` : '';
 
-- **原題**: ${movie.original_title}
-- **公開日**: ${movie.release_date}
-- **監督**: ${director}
-- **上映時間**: ${runtime}
-- **ジャンル**: ${genres}
-- **評価**: ⭐ ${movie.vote_average}/10
+        // コレクション
+        const collectionName = movie.belongs_to_collection?.name || '';
+        const collectionId = movie.belongs_to_collection?.id.toString() || '';
 
-## キャスト
+        return {
+            // 基本情報
+            'title': movie.title || '',
+            'original_title': movie.original_title || '',
+            'tagline': movie.tagline || '',
+            'overview': movie.overview || 'あらすじ情報がありません。',
+            'release_date': movie.release_date || '',
+            'year': year,
+            'status': movie.status || '',
+            'runtime': runtime.toString(),
+            'runtime_formatted': runtimeFormatted,
 
-${cast}
+            // 評価・人気度
+            'vote_average': movie.vote_average?.toString() || '0',
+            'vote_count': movie.vote_count?.toString() || '0',
+            'popularity': movie.popularity?.toString() || '0',
 
-## あらすじ
+            // ジャンル
+            'genres': genres,
+            'genres_list': genresList,
+            'genre_ids': genreIds,
 
-${movie.overview || 'あらすじ情報がありません。'}
+            // 制作情報
+            'budget': movie.budget?.toString() || '0',
+            'budget_formatted': budgetFormatted,
+            'revenue': movie.revenue?.toString() || '0',
+            'revenue_formatted': revenueFormatted,
+            'production_companies': productionCompanies,
+            'production_countries': productionCountries,
+            'spoken_languages': spokenLanguages,
 
-## メモ
+            // スタッフ
+            'director': directors[0] || '不明',
+            'directors': directors.join(', '),
+            'writer': writers[0] || '',
+            'writers': writers.join(', '),
+            'producer': producers[0] || '',
+            'producers': producers.join(', '),
 
-<!-- ここに感想やメモを書いてください -->
+            // キャスト
+            'cast_top5': castTop5,
+            'cast_top10': castTop10,
+            'cast_list': castList,
 
----
-*このノートは [TMDb](https://www.themoviedb.org/movie/${movie.id}) から自動生成されました。*
-`;
+            // 画像
+            'poster_url': posterUrl,
+            'poster_url_original': posterUrlOriginal,
+            'backdrop_url': backdropUrl,
+            'backdrop_url_original': backdropUrlOriginal,
+
+            // リンク・ID
+            'tmdb_id': movie.id.toString(),
+            'imdb_id': movie.imdb_id || '',
+            'tmdb_url': tmdbUrl,
+            'imdb_url': imdbUrl,
+            'homepage': movie.homepage || '',
+
+            // コレクション
+            'collection_name': collectionName,
+            'collection_id': collectionId,
+
+            // その他
+            'adult': movie.adult ? 'true' : 'false',
+            'video': movie.video ? 'true' : 'false',
+            'original_language': movie.original_language || ''
+        };
     }
 }
 
@@ -321,6 +458,48 @@ class MovieNoteSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.language = value;
                     await this.plugin.saveSettings();
+                }));
+
+        // テンプレート設定セクション
+        containerEl.createEl('h3', { text: 'ノートテンプレート' });
+
+        containerEl.createEl('p', {
+            text: '利用可能な変数の一覧は ',
+            cls: 'setting-item-description'
+        }).createEl('a', {
+            text: 'TMDB_DATA_REFERENCE.md',
+            href: 'https://github.com/KxOxUxMxExI/obsidian-movie-note/blob/main/TMDB_DATA_REFERENCE.md'
+        });
+
+        // テンプレートエディタ
+        new Setting(containerEl)
+            .setName('カスタムテンプレート')
+            .setDesc('{{変数名}} の形式で変数を使用できます。')
+            .addTextArea(text => {
+                text
+                    .setPlaceholder('テンプレートを入力...')
+                    .setValue(this.plugin.settings.noteTemplate)
+                    .onChange(async (value) => {
+                        this.plugin.settings.noteTemplate = value;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.rows = 20;
+                text.inputEl.cols = 60;
+                text.inputEl.style.fontFamily = 'monospace';
+                text.inputEl.style.fontSize = '12px';
+            });
+
+        // デフォルトに戻すボタン
+        new Setting(containerEl)
+            .setName('テンプレートをリセット')
+            .setDesc('テンプレートをデフォルトに戻します。')
+            .addButton(button => button
+                .setButtonText('デフォルトに戻す')
+                .onClick(async () => {
+                    this.plugin.settings.noteTemplate = DEFAULT_TEMPLATE;
+                    await this.plugin.saveSettings();
+                    this.display(); // 設定画面を再描画
+                    new Notice('テンプレートをデフォルトに戻しました。');
                 }));
     }
 }

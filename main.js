@@ -28,10 +28,51 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
+var DEFAULT_TEMPLATE = `---
+title: {{title}}
+original_title: {{original_title}}
+release_date: {{release_date}}
+director: {{director}}
+runtime: {{runtime}}
+genres: {{genres}}
+rating: {{vote_average}}
+tmdb_id: {{tmdb_id}}
+imdb_id: {{imdb_id}}
+---
+
+# {{title}}
+
+![\u30DD\u30B9\u30BF\u30FC]({{poster_url}})
+
+## \u57FA\u672C\u60C5\u5831
+
+- **\u539F\u984C**: {{original_title}}
+- **\u516C\u958B\u65E5**: {{release_date}}
+- **\u76E3\u7763**: {{director}}
+- **\u4E0A\u6620\u6642\u9593**: {{runtime_formatted}}
+- **\u30B8\u30E3\u30F3\u30EB**: {{genres}}
+- **\u8A55\u4FA1**: \u2B50 {{vote_average}}/10 ({{vote_count}}\u7968)
+
+## \u30AD\u30E3\u30B9\u30C8
+
+{{cast_list}}
+
+## \u3042\u3089\u3059\u3058
+
+{{overview}}
+
+## \u30E1\u30E2
+
+<!-- \u3053\u3053\u306B\u611F\u60F3\u3084\u30E1\u30E2\u3092\u66F8\u3044\u3066\u304F\u3060\u3055\u3044 -->
+
+---
+*\u3053\u306E\u30CE\u30FC\u30C8\u306F [TMDb]({{tmdb_url}}) \u304B\u3089\u81EA\u52D5\u751F\u6210\u3055\u308C\u307E\u3057\u305F\u3002*
+`;
 var DEFAULT_SETTINGS = {
   apiKey: "",
   outputFolder: "Movies",
-  language: "ja-JP"
+  language: "ja-JP",
+  noteTemplate: DEFAULT_TEMPLATE
 };
 var MovieNotePlugin = class extends import_obsidian.Plugin {
   async onload() {
@@ -118,53 +159,104 @@ var MovieNotePlugin = class extends import_obsidian.Plugin {
       new import_obsidian.Notice("\u30CE\u30FC\u30C8\u306E\u4F5C\u6210\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002");
     }
   }
-  // ノートの内容を生成
+  // ノートの内容を生成（テンプレート変数を置換）
   generateNoteContent(movie) {
-    var _a;
-    const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "";
-    const director = ((_a = movie.credits.crew.find((person) => person.job === "Director")) == null ? void 0 : _a.name) || "\u4E0D\u660E";
-    const cast = movie.credits.cast.slice(0, 5).map((person) => person.name).join(", ");
+    const template = this.settings.noteTemplate;
+    const variables = this.createTemplateVariables(movie);
+    let content = template;
+    for (const [key, value] of Object.entries(variables)) {
+      const regex = new RegExp(`{{${key}}}`, "g");
+      content = content.replace(regex, value);
+    }
+    return content;
+  }
+  // テンプレート変数を作成
+  createTemplateVariables(movie) {
+    var _a, _b, _c, _d, _e, _f, _g;
+    const year = movie.release_date ? movie.release_date.split("-")[0] : "";
+    const runtime = movie.runtime || 0;
+    const hours = Math.floor(runtime / 60);
+    const minutes = runtime % 60;
+    const runtimeFormatted = runtime ? `${hours}\u6642\u9593${minutes}\u5206` : "\u4E0D\u660E";
+    const directors = movie.credits.crew.filter((p) => p.job === "Director").map((p) => p.name);
+    const writers = movie.credits.crew.filter((p) => p.job === "Screenplay" || p.job === "Writer").map((p) => p.name);
+    const producers = movie.credits.crew.filter((p) => p.job === "Producer").map((p) => p.name);
+    const castTop5 = movie.credits.cast.slice(0, 5).map((p) => p.name).join(", ");
+    const castTop10 = movie.credits.cast.slice(0, 10).map((p) => p.name).join(", ");
+    const castList = movie.credits.cast.slice(0, 10).map((p) => `- ${p.name} (${p.character})`).join("\n");
     const genres = movie.genres.map((g) => g.name).join(", ");
-    const runtime = movie.runtime ? `${movie.runtime}\u5206` : "\u4E0D\u660E";
-    return `---
-title: ${movie.title}
-original_title: ${movie.original_title}
-release_date: ${movie.release_date}
-director: ${director}
-runtime: ${runtime}
-genres: ${genres}
-rating: ${movie.vote_average}
-tmdb_id: ${movie.id}
----
-
-# ${movie.title}
-
-![\u30DD\u30B9\u30BF\u30FC](${posterUrl})
-
-## \u57FA\u672C\u60C5\u5831
-
-- **\u539F\u984C**: ${movie.original_title}
-- **\u516C\u958B\u65E5**: ${movie.release_date}
-- **\u76E3\u7763**: ${director}
-- **\u4E0A\u6620\u6642\u9593**: ${runtime}
-- **\u30B8\u30E3\u30F3\u30EB**: ${genres}
-- **\u8A55\u4FA1**: \u2B50 ${movie.vote_average}/10
-
-## \u30AD\u30E3\u30B9\u30C8
-
-${cast}
-
-## \u3042\u3089\u3059\u3058
-
-${movie.overview || "\u3042\u3089\u3059\u3058\u60C5\u5831\u304C\u3042\u308A\u307E\u305B\u3093\u3002"}
-
-## \u30E1\u30E2
-
-<!-- \u3053\u3053\u306B\u611F\u60F3\u3084\u30E1\u30E2\u3092\u66F8\u3044\u3066\u304F\u3060\u3055\u3044 -->
-
----
-*\u3053\u306E\u30CE\u30FC\u30C8\u306F [TMDb](https://www.themoviedb.org/movie/${movie.id}) \u304B\u3089\u81EA\u52D5\u751F\u6210\u3055\u308C\u307E\u3057\u305F\u3002*
-`;
+    const genresList = movie.genres.map((g) => `- ${g.name}`).join("\n");
+    const genreIds = movie.genres.map((g) => g.id).join(", ");
+    const productionCompanies = movie.production_companies.map((c) => c.name).join(", ");
+    const productionCountries = movie.production_countries.map((c) => c.name).join(", ");
+    const spokenLanguages = movie.spoken_languages.map((l) => l.name).join(", ");
+    const budgetFormatted = movie.budget ? `$${movie.budget.toLocaleString()}` : "\u4E0D\u660E";
+    const revenueFormatted = movie.revenue ? `$${movie.revenue.toLocaleString()}` : "\u4E0D\u660E";
+    const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "";
+    const posterUrlOriginal = movie.poster_path ? `https://image.tmdb.org/t/p/original${movie.poster_path}` : "";
+    const backdropUrl = movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : "";
+    const backdropUrlOriginal = movie.backdrop_path ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}` : "";
+    const tmdbUrl = `https://www.themoviedb.org/movie/${movie.id}`;
+    const imdbUrl = movie.imdb_id ? `https://www.imdb.com/title/${movie.imdb_id}` : "";
+    const collectionName = ((_a = movie.belongs_to_collection) == null ? void 0 : _a.name) || "";
+    const collectionId = ((_b = movie.belongs_to_collection) == null ? void 0 : _b.id.toString()) || "";
+    return {
+      // 基本情報
+      "title": movie.title || "",
+      "original_title": movie.original_title || "",
+      "tagline": movie.tagline || "",
+      "overview": movie.overview || "\u3042\u3089\u3059\u3058\u60C5\u5831\u304C\u3042\u308A\u307E\u305B\u3093\u3002",
+      "release_date": movie.release_date || "",
+      "year": year,
+      "status": movie.status || "",
+      "runtime": runtime.toString(),
+      "runtime_formatted": runtimeFormatted,
+      // 評価・人気度
+      "vote_average": ((_c = movie.vote_average) == null ? void 0 : _c.toString()) || "0",
+      "vote_count": ((_d = movie.vote_count) == null ? void 0 : _d.toString()) || "0",
+      "popularity": ((_e = movie.popularity) == null ? void 0 : _e.toString()) || "0",
+      // ジャンル
+      "genres": genres,
+      "genres_list": genresList,
+      "genre_ids": genreIds,
+      // 制作情報
+      "budget": ((_f = movie.budget) == null ? void 0 : _f.toString()) || "0",
+      "budget_formatted": budgetFormatted,
+      "revenue": ((_g = movie.revenue) == null ? void 0 : _g.toString()) || "0",
+      "revenue_formatted": revenueFormatted,
+      "production_companies": productionCompanies,
+      "production_countries": productionCountries,
+      "spoken_languages": spokenLanguages,
+      // スタッフ
+      "director": directors[0] || "\u4E0D\u660E",
+      "directors": directors.join(", "),
+      "writer": writers[0] || "",
+      "writers": writers.join(", "),
+      "producer": producers[0] || "",
+      "producers": producers.join(", "),
+      // キャスト
+      "cast_top5": castTop5,
+      "cast_top10": castTop10,
+      "cast_list": castList,
+      // 画像
+      "poster_url": posterUrl,
+      "poster_url_original": posterUrlOriginal,
+      "backdrop_url": backdropUrl,
+      "backdrop_url_original": backdropUrlOriginal,
+      // リンク・ID
+      "tmdb_id": movie.id.toString(),
+      "imdb_id": movie.imdb_id || "",
+      "tmdb_url": tmdbUrl,
+      "imdb_url": imdbUrl,
+      "homepage": movie.homepage || "",
+      // コレクション
+      "collection_name": collectionName,
+      "collection_id": collectionId,
+      // その他
+      "adult": movie.adult ? "true" : "false",
+      "video": movie.video ? "true" : "false",
+      "original_language": movie.original_language || ""
+    };
   }
 };
 var MovieSearchModal = class extends import_obsidian.SuggestModal {
@@ -231,6 +323,30 @@ var MovieNoteSettingTab = class extends import_obsidian.PluginSettingTab {
     new import_obsidian.Setting(containerEl).setName("\u8A00\u8A9E").setDesc("\u30E1\u30BF\u30C7\u30FC\u30BF\u306E\u8A00\u8A9E\u3092\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\u3002").addDropdown((dropdown) => dropdown.addOption("ja-JP", "\u65E5\u672C\u8A9E").addOption("en-US", "English").addOption("ko-KR", "\uD55C\uAD6D\uC5B4").addOption("zh-CN", "\u4E2D\u6587\uFF08\u7B80\u4F53\uFF09").setValue(this.plugin.settings.language).onChange(async (value) => {
       this.plugin.settings.language = value;
       await this.plugin.saveSettings();
+    }));
+    containerEl.createEl("h3", { text: "\u30CE\u30FC\u30C8\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8" });
+    containerEl.createEl("p", {
+      text: "\u5229\u7528\u53EF\u80FD\u306A\u5909\u6570\u306E\u4E00\u89A7\u306F ",
+      cls: "setting-item-description"
+    }).createEl("a", {
+      text: "TMDB_DATA_REFERENCE.md",
+      href: "https://github.com/KxOxUxMxExI/obsidian-movie-note/blob/main/TMDB_DATA_REFERENCE.md"
+    });
+    new import_obsidian.Setting(containerEl).setName("\u30AB\u30B9\u30BF\u30E0\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8").setDesc("{{\u5909\u6570\u540D}} \u306E\u5F62\u5F0F\u3067\u5909\u6570\u3092\u4F7F\u7528\u3067\u304D\u307E\u3059\u3002").addTextArea((text) => {
+      text.setPlaceholder("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092\u5165\u529B...").setValue(this.plugin.settings.noteTemplate).onChange(async (value) => {
+        this.plugin.settings.noteTemplate = value;
+        await this.plugin.saveSettings();
+      });
+      text.inputEl.rows = 20;
+      text.inputEl.cols = 60;
+      text.inputEl.style.fontFamily = "monospace";
+      text.inputEl.style.fontSize = "12px";
+    });
+    new import_obsidian.Setting(containerEl).setName("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092\u30EA\u30BB\u30C3\u30C8").setDesc("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092\u30C7\u30D5\u30A9\u30EB\u30C8\u306B\u623B\u3057\u307E\u3059\u3002").addButton((button) => button.setButtonText("\u30C7\u30D5\u30A9\u30EB\u30C8\u306B\u623B\u3059").onClick(async () => {
+      this.plugin.settings.noteTemplate = DEFAULT_TEMPLATE;
+      await this.plugin.saveSettings();
+      this.display();
+      new import_obsidian.Notice("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092\u30C7\u30D5\u30A9\u30EB\u30C8\u306B\u623B\u3057\u307E\u3057\u305F\u3002");
     }));
   }
 };
