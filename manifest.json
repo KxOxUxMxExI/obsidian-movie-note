@@ -1,0 +1,10 @@
+{
+	"id": "obsidian-movie-note",
+	"name": "Movie Note",
+	"version": "0.1.0",
+	"minAppVersion": "0.15.0",
+	"description": "TMDb APIを使用して映画のメタデータを取得し、自動的にノートを作成します",
+	"author": "rikou",
+	"authorUrl": "https://github.com/rikou/obsidian-movie-note",
+	"isDesktopOnly": false
+}

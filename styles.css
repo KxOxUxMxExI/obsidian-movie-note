@@ -1,0 +1,46 @@
+/* Movie Search Modal のスタイル */
+
+.movie-title {
+	font-weight: bold;
+	font-size: 1.1em;
+	margin-bottom: 4px;
+	color: var(--text-normal);
+}
+
+.movie-details {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 4px;
+	font-size: 0.9em;
+	color: var(--text-muted);
+}
+
+.movie-original-title {
+	font-style: italic;
+}
+
+.movie-year {
+	color: var(--text-accent);
+}
+
+.movie-overview {
+	font-size: 0.85em;
+	color: var(--text-faint);
+	line-height: 1.4;
+	margin-top: 4px;
+}
+
+/* 検索候補のホバー効果 */
+.suggestion-item:hover .movie-title {
+	color: var(--text-accent);
+}
+
+/* 設定タブのスタイル */
+.setting-item-description a {
+	color: var(--text-accent);
+	text-decoration: none;
+}
+
+.setting-item-description a:hover {
+	text-decoration: underline;
+}
