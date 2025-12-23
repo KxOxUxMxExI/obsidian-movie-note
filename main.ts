@@ -13,10 +13,13 @@ const DEFAULT_TEMPLATE = `---
 title: {{title}}
 original_title: {{original_title}}
 release_date: {{release_date}}
+viewing_date: 
+viewing_location: 
 director: {{director}}
 runtime: {{runtime}}
 genres: {{genres}}
-rating: {{vote_average}}
+tmdb_rating: {{vote_average}}
+my_rating: 
 tmdb_id: {{tmdb_id}}
 imdb_id: {{imdb_id}}
 ---
@@ -25,26 +28,48 @@ imdb_id: {{imdb_id}}
 
 ![ポスター]({{poster_url}})
 
-## 基本情報
+## 📊 基本情報
 
 - **原題**: {{original_title}}
 - **公開日**: {{release_date}}
-- **監督**: {{director}}
+- **鑑賞日**: 
+- **鑑賞場所**: 
 - **上映時間**: {{runtime_formatted}}
 - **ジャンル**: {{genres}}
-- **評価**: ⭐ {{vote_average}}/10 ({{vote_count}}票)
 
-## キャスト
+## ⭐ 評価
 
-{{cast_list}}
+- **TMDb評価**: {{vote_average}}/10 ({{vote_count}}票)
+- **自分の評価**: /10
 
-## あらすじ
+## 🎬 スタッフ
+
+- **監督**: {{directors}}
+- **脚本**: {{writers}}
+- **プロデューサー**: {{producers}}
+- **音楽**: {{composers}}
+
+## 💰 興行成績
+
+- **製作費**: {{budget_formatted}}
+- **興行収入**: {{revenue_formatted}}
+
+## 🎭 キャスト
+
+{{cast_list_20}}
+
+## 📝 あらすじ
 
 {{overview}}
 
-## メモ
+## 💭 感想・メモ
 
 <!-- ここに感想やメモを書いてください -->
+
+## 🔗 リンク
+
+- [TMDb]({{tmdb_url}})
+- [IMDb]({{imdb_url}})
 
 ---
 *このノートは [TMDb]({{tmdb_url}}) から自動生成されました。*
@@ -245,11 +270,16 @@ export default class MovieNotePlugin extends Plugin {
         const directors = movie.credits.crew.filter(p => p.job === 'Director').map(p => p.name);
         const writers = movie.credits.crew.filter(p => p.job === 'Screenplay' || p.job === 'Writer').map(p => p.name);
         const producers = movie.credits.crew.filter(p => p.job === 'Producer').map(p => p.name);
+        const composers = movie.credits.crew.filter(p => p.job === 'Original Music Composer').map(p => p.name);
 
         // キャスト情報
         const castTop5 = movie.credits.cast.slice(0, 5).map(p => p.name).join(', ');
         const castTop10 = movie.credits.cast.slice(0, 10).map(p => p.name).join(', ');
+        const castTop20 = movie.credits.cast.slice(0, 20).map(p => p.name).join(', ');
         const castList = movie.credits.cast.slice(0, 10)
+            .map(p => `- ${p.name} (${p.character})`)
+            .join('\n');
+        const castList20 = movie.credits.cast.slice(0, 20)
             .map(p => `- ${p.name} (${p.character})`)
             .join('\n');
 
@@ -319,11 +349,15 @@ export default class MovieNotePlugin extends Plugin {
             'writers': writers.join(', '),
             'producer': producers[0] || '',
             'producers': producers.join(', '),
+            'composer': composers[0] || '',
+            'composers': composers.join(', '),
 
             // キャスト
             'cast_top5': castTop5,
             'cast_top10': castTop10,
+            'cast_top20': castTop20,
             'cast_list': castList,
+            'cast_list_20': castList20,
 
             // 画像
             'poster_url': posterUrl,

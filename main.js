@@ -32,10 +32,13 @@ var DEFAULT_TEMPLATE = `---
 title: {{title}}
 original_title: {{original_title}}
 release_date: {{release_date}}
+viewing_date: 
+viewing_location: 
 director: {{director}}
 runtime: {{runtime}}
 genres: {{genres}}
-rating: {{vote_average}}
+tmdb_rating: {{vote_average}}
+my_rating: 
 tmdb_id: {{tmdb_id}}
 imdb_id: {{imdb_id}}
 ---
@@ -44,26 +47,48 @@ imdb_id: {{imdb_id}}
 
 ![\u30DD\u30B9\u30BF\u30FC]({{poster_url}})
 
-## \u57FA\u672C\u60C5\u5831
+## \u{1F4CA} \u57FA\u672C\u60C5\u5831
 
 - **\u539F\u984C**: {{original_title}}
 - **\u516C\u958B\u65E5**: {{release_date}}
-- **\u76E3\u7763**: {{director}}
+- **\u9451\u8CDE\u65E5**: 
+- **\u9451\u8CDE\u5834\u6240**: 
 - **\u4E0A\u6620\u6642\u9593**: {{runtime_formatted}}
 - **\u30B8\u30E3\u30F3\u30EB**: {{genres}}
-- **\u8A55\u4FA1**: \u2B50 {{vote_average}}/10 ({{vote_count}}\u7968)
 
-## \u30AD\u30E3\u30B9\u30C8
+## \u2B50 \u8A55\u4FA1
 
-{{cast_list}}
+- **TMDb\u8A55\u4FA1**: {{vote_average}}/10 ({{vote_count}}\u7968)
+- **\u81EA\u5206\u306E\u8A55\u4FA1**: /10
 
-## \u3042\u3089\u3059\u3058
+## \u{1F3AC} \u30B9\u30BF\u30C3\u30D5
+
+- **\u76E3\u7763**: {{directors}}
+- **\u811A\u672C**: {{writers}}
+- **\u30D7\u30ED\u30C7\u30E5\u30FC\u30B5\u30FC**: {{producers}}
+- **\u97F3\u697D**: {{composers}}
+
+## \u{1F4B0} \u8208\u884C\u6210\u7E3E
+
+- **\u88FD\u4F5C\u8CBB**: {{budget_formatted}}
+- **\u8208\u884C\u53CE\u5165**: {{revenue_formatted}}
+
+## \u{1F3AD} \u30AD\u30E3\u30B9\u30C8
+
+{{cast_list_20}}
+
+## \u{1F4DD} \u3042\u3089\u3059\u3058
 
 {{overview}}
 
-## \u30E1\u30E2
+## \u{1F4AD} \u611F\u60F3\u30FB\u30E1\u30E2
 
 <!-- \u3053\u3053\u306B\u611F\u60F3\u3084\u30E1\u30E2\u3092\u66F8\u3044\u3066\u304F\u3060\u3055\u3044 -->
+
+## \u{1F517} \u30EA\u30F3\u30AF
+
+- [TMDb]({{tmdb_url}})
+- [IMDb]({{imdb_url}})
 
 ---
 *\u3053\u306E\u30CE\u30FC\u30C8\u306F [TMDb]({{tmdb_url}}) \u304B\u3089\u81EA\u52D5\u751F\u6210\u3055\u308C\u307E\u3057\u305F\u3002*
@@ -181,9 +206,12 @@ var MovieNotePlugin = class extends import_obsidian.Plugin {
     const directors = movie.credits.crew.filter((p) => p.job === "Director").map((p) => p.name);
     const writers = movie.credits.crew.filter((p) => p.job === "Screenplay" || p.job === "Writer").map((p) => p.name);
     const producers = movie.credits.crew.filter((p) => p.job === "Producer").map((p) => p.name);
+    const composers = movie.credits.crew.filter((p) => p.job === "Original Music Composer").map((p) => p.name);
     const castTop5 = movie.credits.cast.slice(0, 5).map((p) => p.name).join(", ");
     const castTop10 = movie.credits.cast.slice(0, 10).map((p) => p.name).join(", ");
+    const castTop20 = movie.credits.cast.slice(0, 20).map((p) => p.name).join(", ");
     const castList = movie.credits.cast.slice(0, 10).map((p) => `- ${p.name} (${p.character})`).join("\n");
+    const castList20 = movie.credits.cast.slice(0, 20).map((p) => `- ${p.name} (${p.character})`).join("\n");
     const genres = movie.genres.map((g) => g.name).join(", ");
     const genresList = movie.genres.map((g) => `- ${g.name}`).join("\n");
     const genreIds = movie.genres.map((g) => g.id).join(", ");
@@ -234,10 +262,14 @@ var MovieNotePlugin = class extends import_obsidian.Plugin {
       "writers": writers.join(", "),
       "producer": producers[0] || "",
       "producers": producers.join(", "),
+      "composer": composers[0] || "",
+      "composers": composers.join(", "),
       // キャスト
       "cast_top5": castTop5,
       "cast_top10": castTop10,
+      "cast_top20": castTop20,
       "cast_list": castList,
+      "cast_list_20": castList20,
       // 画像
       "poster_url": posterUrl,
       "poster_url_original": posterUrlOriginal,
