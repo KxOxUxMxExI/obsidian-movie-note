@@ -277,11 +277,11 @@ export default class MovieNotePlugin extends Plugin {
         const castTop10 = movie.credits.cast.slice(0, 10).map(p => p.name).join(', ');
         const castTop20 = movie.credits.cast.slice(0, 20).map(p => p.name).join(', ');
         const castList = movie.credits.cast.slice(0, 10)
-            .map(p => `- ${p.name} (${p.character})`)
-            .join('\n');
+            .map(p => `${p.name} (${p.character})`)
+            .join(' / ');
         const castList20 = movie.credits.cast.slice(0, 20)
-            .map(p => `- ${p.name} (${p.character})`)
-            .join('\n');
+            .map(p => `${p.name} (${p.character})`)
+            .join(' / ');
 
         // ジャンル
         const genres = movie.genres.map(g => g.name).join(', ');

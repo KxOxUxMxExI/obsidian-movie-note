@@ -210,8 +210,8 @@ var MovieNotePlugin = class extends import_obsidian.Plugin {
     const castTop5 = movie.credits.cast.slice(0, 5).map((p) => p.name).join(", ");
     const castTop10 = movie.credits.cast.slice(0, 10).map((p) => p.name).join(", ");
     const castTop20 = movie.credits.cast.slice(0, 20).map((p) => p.name).join(", ");
-    const castList = movie.credits.cast.slice(0, 10).map((p) => `- ${p.name} (${p.character})`).join("\n");
-    const castList20 = movie.credits.cast.slice(0, 20).map((p) => `- ${p.name} (${p.character})`).join("\n");
+    const castList = movie.credits.cast.slice(0, 10).map((p) => `${p.name} (${p.character})`).join(" / ");
+    const castList20 = movie.credits.cast.slice(0, 20).map((p) => `${p.name} (${p.character})`).join(" / ");
     const genres = movie.genres.map((g) => g.name).join(", ");
     const genresList = movie.genres.map((g) => `- ${g.name}`).join("\n");
     const genreIds = movie.genres.map((g) => g.id).join(", ");
