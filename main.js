@@ -32,7 +32,7 @@ var DEFAULT_TEMPLATE = `---
 title: {{title}}
 original_title: {{original_title}}
 release_date: {{release_date}}
-viewing_date: 
+viewing_date: {{viewing_date}}
 viewing_location: 
 director: {{director}}
 runtime: {{runtime}}
@@ -51,7 +51,7 @@ imdb_id: {{imdb_id}}
 
 - **\u539F\u984C**: {{original_title}}
 - **\u516C\u958B\u65E5**: {{release_date}}
-- **\u9451\u8CDE\u65E5**: 
+- **\u9451\u8CDE\u65E5**: {{viewing_date}}
 - **\u9451\u8CDE\u5834\u6240**: 
 - **\u4E0A\u6620\u6642\u9593**: {{runtime_formatted}}
 - **\u30B8\u30E3\u30F3\u30EB**: {{genres}}
@@ -198,6 +198,8 @@ var MovieNotePlugin = class extends import_obsidian.Plugin {
   // テンプレート変数を作成
   createTemplateVariables(movie) {
     var _a, _b, _c, _d, _e, _f, _g;
+    const today = new Date();
+    const viewingDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const year = movie.release_date ? movie.release_date.split("-")[0] : "";
     const runtime = movie.runtime || 0;
     const hours = Math.floor(runtime / 60);
@@ -235,6 +237,7 @@ var MovieNotePlugin = class extends import_obsidian.Plugin {
       "tagline": movie.tagline || "",
       "overview": movie.overview || "\u3042\u3089\u3059\u3058\u60C5\u5831\u304C\u3042\u308A\u307E\u305B\u3093\u3002",
       "release_date": movie.release_date || "",
+      "viewing_date": viewingDate,
       "year": year,
       "status": movie.status || "",
       "runtime": runtime.toString(),

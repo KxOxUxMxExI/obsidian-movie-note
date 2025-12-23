@@ -13,7 +13,7 @@ const DEFAULT_TEMPLATE = `---
 title: {{title}}
 original_title: {{original_title}}
 release_date: {{release_date}}
-viewing_date: 
+viewing_date: {{viewing_date}}
 viewing_location: 
 director: {{director}}
 runtime: {{runtime}}
@@ -32,7 +32,7 @@ imdb_id: {{imdb_id}}
 
 - **原題**: {{original_title}}
 - **公開日**: {{release_date}}
-- **鑑賞日**: 
+- **鑑賞日**: {{viewing_date}}
 - **鑑賞場所**: 
 - **上映時間**: {{runtime_formatted}}
 - **ジャンル**: {{genres}}
@@ -259,6 +259,10 @@ export default class MovieNotePlugin extends Plugin {
 
     // テンプレート変数を作成
     createTemplateVariables(movie: TMDbMovie): Record<string, string> {
+        // 今日の日付を取得（YYYY-MM-DD形式）
+        const today = new Date();
+        const viewingDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
         // 基本情報
         const year = movie.release_date ? movie.release_date.split('-')[0] : '';
         const runtime = movie.runtime || 0;
@@ -318,6 +322,7 @@ export default class MovieNotePlugin extends Plugin {
             'tagline': movie.tagline || '',
             'overview': movie.overview || 'あらすじ情報がありません。',
             'release_date': movie.release_date || '',
+            'viewing_date': viewingDate,
             'year': year,
             'status': movie.status || '',
             'runtime': runtime.toString(),
