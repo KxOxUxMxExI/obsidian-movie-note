@@ -36,7 +36,7 @@ node_modules/
 .eslintcache
 
 # Build output
-main.js
+# main.js は配布用に含める
 *.js.map
 
 # macOS
